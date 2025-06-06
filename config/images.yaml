@@ -1,0 +1,40 @@
+# Image Service Configuration
+# This file defines the image types and their respective size configurations
+
+images:
+  - name: user
+    sizes:
+      small:
+        width: 50
+        height: 50
+      medium:
+        width: 100
+        height: 100
+      large:
+        width: 800
+        height: 800
+
+  - name: organization
+    sizes:
+      small:
+        width: 400
+        height: 0  # height: 0 means auto-scale proportionally
+      medium:
+        width: 800
+        height: 0
+      large:
+        width: 1000
+        height: 0
+
+  # Reserved for future use
+  - name: product
+    sizes:
+      small:
+        width: 200
+        height: 0
+      medium:
+        width: 600
+        height: 0
+      large:
+        width: 1200
+        height: 0
