@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"os"
@@ -11,6 +12,10 @@ import (
 
 	"github.com/antonrybalko/image-service-go/internal/api"
 	"github.com/antonrybalko/image-service-go/internal/config"
+	"github.com/antonrybalko/image-service-go/internal/processor"
+	"github.com/antonrybalko/image-service-go/internal/repository"
+	"github.com/antonrybalko/image-service-go/internal/service"
+	"github.com/antonrybalko/image-service-go/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
@@ -43,23 +48,86 @@ func main() {
 		"port", cfg.Port,
 	)
 
-	// Create router
-	r := chi.NewRouter()
+	// Load image configuration from YAML
+	imageConfig, err := config.LoadImageConfig(cfg.ImageConfig.ConfigPath)
+	if err != nil {
+		sugar.Fatalw("Failed to load image configuration",
+			"error", err,
+			"path", cfg.ImageConfig.ConfigPath)
+	}
+	sugar.Infow("Loaded image configuration",
+		"types", len(imageConfig.Types),
+		"path", cfg.ImageConfig.ConfigPath)
 
-	// Middleware
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-	r.Use(middleware.Timeout(60 * time.Second))
+	// Initialize repository
+	// For Phase 1, we'll use a mock repository
+	var imageRepo repository.ImageRepository
+	if cfg.Environment == "production" || cfg.Environment == "staging" {
+		// In production, we would initialize a real PostgreSQL connection
+		db, err := initializeDatabase(cfg)
+		if err != nil {
+			sugar.Fatalw("Failed to initialize database",
+				"error", err)
+		}
+		defer db.Close()
+		imageRepo = repository.NewPostgresImageRepository(db)
+		sugar.Info("Initialized PostgreSQL repository")
+	} else {
+		// For development and testing, use an in-memory mock
+		imageRepo = repository.NewMockImageRepository()
+		sugar.Info("Initialized mock repository")
+	}
 
-	// Health check endpoint
-	r.Get("/health", api.HealthHandler())
+	// Initialize storage client
+	var storageClient storage.S3Interface
+	if cfg.Environment == "test" {
+		// Use mock storage for tests
+		storageClient = storage.NewMockS3()
+		sugar.Info("Initialized mock S3 storage")
+	} else {
+		// Initialize real S3 client
+		s3Config := storage.S3Config{
+			Region:          cfg.S3.Region,
+			Bucket:          cfg.S3.Bucket,
+			AccessKeyID:     cfg.S3.AccessKeyID,
+			SecretAccessKey: cfg.S3.SecretAccessKey,
+			Endpoint:        cfg.S3.Endpoint,
+			CDNBaseURL:      cfg.S3.CDNBaseURL,
+			UsePathStyle:    cfg.S3.UsePathStyle,
+		}
+		storageClient, err = storage.NewS3Client(s3Config)
+		if err != nil {
+			sugar.Fatalw("Failed to initialize S3 storage client",
+				"error", err)
+		}
+		sugar.Infow("Initialized S3 storage client",
+			"region", cfg.S3.Region,
+			"bucket", cfg.S3.Bucket,
+			"endpoint", cfg.S3.Endpoint)
+	}
+
+	// Initialize image processor
+	imageProcessor := processor.NewProcessor()
+	sugar.Info("Initialized image processor")
+
+	// Initialize image service
+	imageService := service.NewImageService(
+		imageRepo,
+		storageClient,
+		imageProcessor,
+		imageConfig,
+		sugar,
+	)
+	sugar.Info("Initialized image service")
+
+	// Create router with all dependencies
+	router := api.NewRouter(sugar, cfg, imageService)
+	sugar.Info("Initialized router")
 
 	// Create server
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Port),
-		Handler:      r,
+		Handler:      router.Handler(),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
@@ -91,4 +159,30 @@ func main() {
 	}
 
 	sugar.Info("Server exited gracefully")
+}
+
+// initializeDatabase sets up the PostgreSQL database connection
+func initializeDatabase(cfg *config.Config) (*sql.DB, error) {
+	connStr := fmt.Sprintf(
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+		cfg.DB.Host, cfg.DB.Port, cfg.DB.User, cfg.DB.Password, cfg.DB.Name, cfg.DB.SSLMode,
+	)
+
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database connection: %w", err)
+	}
+
+	// Set connection pool settings
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(5 * time.Minute)
+
+	// Test the connection
+	if err := db.Ping(); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
+
+	return db, nil
 }
