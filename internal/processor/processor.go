@@ -34,7 +34,7 @@ type ProcessorInterface interface {
 // Processor implements ProcessorInterface using Go's standard image package
 // In a real implementation, this would use govips/libvips for better performance
 type Processor struct {
-	// Add fields as needed for configuration
+	// No fields needed for the basic implementation
 }
 
 // NewProcessor creates a new image processor
@@ -73,14 +73,14 @@ func (p *Processor) ProcessImage(imgData []byte, imageType *domain.ImageType) (m
 		// Create a new image with the calculated dimensions
 		dstImg := image.NewRGBA(image.Rect(0, 0, newWidth, newHeight))
 		
-		// Resize the image
+		// Resize the image using CatmullRom for high-quality resampling
 		draw.CatmullRom.Scale(dstImg, dstImg.Bounds(), srcImg, srcImg.Bounds(), draw.Over, nil)
 		
 		// Encode the resized image
 		var buf bytes.Buffer
 		var encodeErr error
 		
-		// Always encode as JPEG for consistency
+		// Always encode as JPEG for consistency, regardless of input format
 		encodeErr = jpeg.Encode(&buf, dstImg, &jpeg.Options{Quality: 90})
 		
 		if encodeErr != nil {

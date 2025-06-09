@@ -8,6 +8,7 @@ import (
 
 	"github.com/antonrybalko/image-service-go/internal/auth"
 	"github.com/antonrybalko/image-service-go/internal/config"
+	"github.com/antonrybalko/image-service-go/internal/service"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
@@ -15,9 +16,10 @@ import (
 
 // Router holds the HTTP router and its dependencies
 type Router struct {
-	router *chi.Mux
-	logger *zap.SugaredLogger
-	config *config.Config
+	router       *chi.Mux
+	logger       *zap.SugaredLogger
+	config       *config.Config
+	imageService *service.ImageService
 }
 
 // ErrorResponse represents a standard error response
@@ -28,11 +30,12 @@ type ErrorResponse struct {
 }
 
 // NewRouter creates and configures a new router
-func NewRouter(logger *zap.SugaredLogger, cfg *config.Config) *Router {
+func NewRouter(logger *zap.SugaredLogger, cfg *config.Config, imageService *service.ImageService) *Router {
 	r := &Router{
-		router: chi.NewRouter(),
-		logger: logger,
-		config: cfg,
+		router:       chi.NewRouter(),
+		logger:       logger,
+		config:       cfg,
+		imageService: imageService,
 	}
 
 	// Set up common middleware
@@ -57,13 +60,16 @@ func (r *Router) Handler() http.Handler {
 
 // setupRoutes configures all routes for the API
 func (r *Router) setupRoutes() {
+	// Create user image handlers
+	userImageHandlers := NewUserImageHandlers(r.imageService)
+
 	// Public health check endpoint
 	r.router.Get("/health", HealthHandler())
 
 	// API v1 routes
 	r.router.Route("/v1", func(v1 r chi.Router) {
 		// Public routes
-		v1.Get("/users/{userGuid}/image", r.handleGetUserImage())
+		v1.Get("/users/{userGuid}/image", userImageHandlers.GetUserImage())
 
 		// Protected routes - require authentication
 		v1.Group(func(auth r chi.Router) {
@@ -72,9 +78,9 @@ func (r *Router) setupRoutes() {
 
 			// Current user routes
 			auth.Route("/me", func(me r chi.Router) {
-				me.Put("/image", r.handleUploadUserImage())
-				me.Get("/image", r.handleGetCurrentUserImage())
-				me.Delete("/image", r.handleDeleteUserImage())
+				me.Put("/image", userImageHandlers.UploadUserImage())
+				me.Get("/image", userImageHandlers.GetCurrentUserImage())
+				me.Delete("/image", userImageHandlers.DeleteUserImage())
 			})
 		})
 	})
@@ -88,82 +94,6 @@ func (r *Router) jwtAuth() func(http.Handler) http.Handler {
 		Algorithm:    r.config.JWT.Algorithm,
 	}
 	return auth.JWTMiddleware(jwtConfig)
-}
-
-// handleUploadUserImage handles PUT /v1/me/image
-func (r *Router) handleUploadUserImage() http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		// Get user ID from context (set by JWT middleware)
-		userID, ok := auth.GetUserIDFromContext(req.Context())
-		if !ok {
-			r.writeError(w, http.StatusUnauthorized, "Unauthorized", "Invalid or missing authentication")
-			return
-		}
-
-		// For Phase 0, just return a placeholder response
-		w.WriteHeader(http.StatusNotImplemented)
-		json.NewEncoder(w).Encode(map[string]string{
-			"message": "Upload user image endpoint not yet implemented",
-			"userID":  userID,
-		})
-	}
-}
-
-// handleGetCurrentUserImage handles GET /v1/me/image
-func (r *Router) handleGetCurrentUserImage() http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		// Get user ID from context (set by JWT middleware)
-		userID, ok := auth.GetUserIDFromContext(req.Context())
-		if !ok {
-			r.writeError(w, http.StatusUnauthorized, "Unauthorized", "Invalid or missing authentication")
-			return
-		}
-
-		// For Phase 0, just return a placeholder response
-		w.WriteHeader(http.StatusNotImplemented)
-		json.NewEncoder(w).Encode(map[string]string{
-			"message": "Get current user image endpoint not yet implemented",
-			"userID":  userID,
-		})
-	}
-}
-
-// handleDeleteUserImage handles DELETE /v1/me/image
-func (r *Router) handleDeleteUserImage() http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		// Get user ID from context (set by JWT middleware)
-		userID, ok := auth.GetUserIDFromContext(req.Context())
-		if !ok {
-			r.writeError(w, http.StatusUnauthorized, "Unauthorized", "Invalid or missing authentication")
-			return
-		}
-
-		// For Phase 0, just return a placeholder response
-		w.WriteHeader(http.StatusNotImplemented)
-		json.NewEncoder(w).Encode(map[string]string{
-			"message": "Delete user image endpoint not yet implemented",
-			"userID":  userID,
-		})
-	}
-}
-
-// handleGetUserImage handles GET /v1/users/{userGuid}/image
-func (r *Router) handleGetUserImage() http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		// Extract user GUID from URL path
-		userGuid := chi.URLParam(req, "userGuid")
-		if userGuid == "" {
-			r.writeError(w, http.StatusBadRequest, "BadRequest", "User GUID is required")
-			return
-		}
-
-		// For Phase 0, just return a placeholder response
-		w.WriteHeader(http.StatusNotImplemented)
-		json.NewEncoder(w).Encode(map[string]string{
-			"message":  "Get user image endpoint not yet implemented",
-			"userGuid": userGuid,
-		})
-	}
 }
 
 // writeError writes a standardized error response
