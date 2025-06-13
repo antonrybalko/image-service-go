@@ -8,8 +8,10 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Download dependencies first (better caching)
-COPY go.mod go.sum ./
-RUN go mod download
+# Copy only go.mod first (go.sum may not yet exist)
+COPY go.mod ./
+# Download deps and generate go.sum
+RUN go mod download && go mod tidy
 
 # Copy source code
 COPY . .
