@@ -16,7 +16,7 @@ GOTEST := $(GO) test
 GOBUILD := $(GO) build
 GORUN := $(GO) run
 GOMOD := $(GO) mod
-GOLINT := golangci-lint
+GOLINT := $(shell go env GOPATH)/bin/golangci-lint
 
 # Default target
 .PHONY: help
@@ -88,7 +88,7 @@ deps:
 	$(GOMOD) tidy
 	@if ! command -v $(GOLINT) &> /dev/null; then \
 		echo "Installing golangci-lint..."; \
-		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin; \
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$(go env GOPATH)/bin; \
 	fi
 	@if ! command -v mockgen &> /dev/null; then \
 		echo "Installing mockgen..."; \
