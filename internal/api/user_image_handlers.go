@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/antonrybalko/image-service-go/internal/auth"
-	"github.com/antonrybalko/image-service-go/internal/domain"
 	"github.com/antonrybalko/image-service-go/internal/service"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"

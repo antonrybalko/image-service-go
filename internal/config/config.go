@@ -41,10 +41,8 @@ type Config struct {
 		Algorithm    string `mapstructure:"JWT_ALGORITHM"`
 	}
 
-	// Image configuration
-	ImageConfig struct {
-		ConfigPath string `mapstructure:"IMAGE_CONFIG_PATH"`
-	}
+	// Image configuration - flattened to top level
+	ImageConfigPath string `mapstructure:"IMAGE_CONFIG_PATH"`
 }
 
 // Load reads the configuration from environment variables and returns a Config struct
@@ -100,6 +98,6 @@ func setDefaults(v *viper.Viper) {
 	// JWT defaults
 	v.SetDefault("JWT_ALGORITHM", "RS256")
 
-	// Image config defaults
+	// Image config defaults - use the nested key format
 	v.SetDefault("IMAGE_CONFIG_PATH", "config/images.yaml")
 }
