@@ -1,4 +1,4 @@
-FROM golang:1.21-bullseye AS builder
+FROM golang:1.24-bullseye AS builder
 
 WORKDIR /app
 
@@ -8,11 +8,11 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Download dependencies first (better caching)
-COPY go.mod go.sum ./
-RUN go mod download
-
-# Copy source code
+# Copy project files (includes go.mod; go.sum may not yet exist)
 COPY . .
+# Ensure go.sum is generated *after* all code is available, so
+# that `go mod tidy` can discover every imported package.
+RUN go mod tidy && go mod download
 
 # Build the application
 # CGO is required for libvips
