@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strings"
 	"sync"
@@ -231,8 +232,14 @@ func refreshJWKSCache(jwksURL string) error {
 		return fmt.Errorf("failed to fetch JWKS: status code %d", resp.StatusCode)
 	}
 
-	// Parse the JWKS
-	set, err := jwk.Parse(resp.Body)
+	// Read the response body into a byte slice
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read JWKS response body: %w", err)
+	}
+
+	// Parse the JWKS from the byte slice
+	set, err := jwk.Parse(bodyBytes)
 	if err != nil {
 		return fmt.Errorf("failed to parse JWKS: %w", err)
 	}

@@ -42,12 +42,11 @@ func (r *PostgresImageRepository) SaveImage(ctx context.Context, image *domain.I
 		return fmt.Errorf("%w: %v", ErrDatabase, err)
 	}
 
-	var result sql.Result
 	now := time.Now().UTC()
 
 	if exists {
 		// Update existing image
-		result, err = tx.ExecContext(ctx, `
+		_, err = tx.ExecContext(ctx, `
 			UPDATE images 
 			SET owner_guid = $1, 
 				type_name = $2, 
@@ -71,7 +70,7 @@ func (r *PostgresImageRepository) SaveImage(ctx context.Context, image *domain.I
 			image.GUID)
 	} else {
 		// Insert new image
-		result, err = tx.ExecContext(ctx, `
+		_, err = tx.ExecContext(ctx, `
 			INSERT INTO images (
 				guid, owner_guid, type_name, small_url, medium_url, large_url, 
 				created_at, updated_at, content_type, original_width, original_height

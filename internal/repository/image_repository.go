@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"sync"
 	"time"
@@ -37,60 +36,6 @@ type ImageRepository interface {
 
 	// ListImagesByType lists all images of a specific type
 	ListImagesByType(ctx context.Context, typeName string, limit, offset int) ([]*domain.Image, error)
-}
-
-// PostgresImageRepository implements ImageRepository using PostgreSQL
-type PostgresImageRepository struct {
-	db *sql.DB
-}
-
-// NewPostgresImageRepository creates a new PostgresImageRepository
-func NewPostgresImageRepository(db *sql.DB) *PostgresImageRepository {
-	return &PostgresImageRepository{
-		db: db,
-	}
-}
-
-// SaveImage saves a new image or updates an existing one
-func (r *PostgresImageRepository) SaveImage(ctx context.Context, image *domain.Image) error {
-	// In a real implementation, this would use SQL to insert or update the image
-	// For Phase 0, we'll just return nil as a placeholder
-	return nil
-}
-
-// GetImageByID retrieves an image by its GUID
-func (r *PostgresImageRepository) GetImageByID(ctx context.Context, imageGUID uuid.UUID) (*domain.Image, error) {
-	// In a real implementation, this would use SQL to query the image by ID
-	// For Phase 0, we'll just return an error as a placeholder
-	return nil, ErrNotFound
-}
-
-// GetImageByOwner retrieves an image by owner GUID and type
-func (r *PostgresImageRepository) GetImageByOwner(ctx context.Context, ownerGUID uuid.UUID, typeName string) (*domain.Image, error) {
-	// In a real implementation, this would use SQL to query the image by owner and type
-	// For Phase 0, we'll just return an error as a placeholder
-	return nil, ErrNotFound
-}
-
-// DeleteImage deletes an image by its GUID
-func (r *PostgresImageRepository) DeleteImage(ctx context.Context, imageGUID uuid.UUID) error {
-	// In a real implementation, this would use SQL to delete the image
-	// For Phase 0, we'll just return nil as a placeholder
-	return nil
-}
-
-// DeleteImageByOwner deletes an image by owner GUID and type
-func (r *PostgresImageRepository) DeleteImageByOwner(ctx context.Context, ownerGUID uuid.UUID, typeName string) error {
-	// In a real implementation, this would use SQL to delete the image
-	// For Phase 0, we'll just return nil as a placeholder
-	return nil
-}
-
-// ListImagesByType lists all images of a specific type
-func (r *PostgresImageRepository) ListImagesByType(ctx context.Context, typeName string, limit, offset int) ([]*domain.Image, error) {
-	// In a real implementation, this would use SQL to query images by type
-	// For Phase 0, we'll just return an empty slice as a placeholder
-	return []*domain.Image{}, nil
 }
 
 // MockImageRepository implements ImageRepository for testing

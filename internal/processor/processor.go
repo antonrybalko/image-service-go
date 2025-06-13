@@ -6,12 +6,10 @@ import (
 	"fmt"
 	"image"
 	"image/jpeg"
-	"image/png"
-	"io"
+	_ "image/png" // register PNG decoder
 	"sync"
 
 	"github.com/antonrybalko/image-service-go/internal/domain"
-	"github.com/google/uuid"
 	"golang.org/x/image/draw"
 )
 
@@ -53,7 +51,7 @@ func (p *Processor) ProcessImage(imgData []byte, imageType *domain.ImageType) (m
 	}
 	
 	// Decode the source image
-	srcImg, format, err := image.Decode(bytes.NewReader(imgData))
+	srcImg, _, err := image.Decode(bytes.NewReader(imgData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode image: %w", err)
 	}
