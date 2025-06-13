@@ -14,15 +14,6 @@ type HealthResponse struct {
 	Status string `json:"status"`
 }
 
-// HealthHandler returns a simple health check handler function
-func HealthHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok"}`))
-	}
-}
-
 func TestHealthHandler(t *testing.T) {
 	// Create a request to pass to our handler
 	req, err := http.NewRequest("GET", "/health", nil)

@@ -206,7 +206,7 @@ func TestDeleteUserImage_NotFound(t *testing.T) {
 func TestUploadUserImage_InvalidImage(t *testing.T) {
 	// Set up test service and mocks
 	service, _, _, _, _ := setupTestService(t)
-
+	service, _, _, mockProcessor, _ := setupTestService(t)
 	// Create test data
 	ctx := context.Background()
 	userGUID := uuid.New()
