@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"time"
 
 	"github.com/antonrybalko/image-service-go/internal/domain"
 	"github.com/antonrybalko/image-service-go/internal/processor"
@@ -95,12 +94,11 @@ func (s *ImageService) UploadUserImage(ctx context.Context, userGUID uuid.UUID, 
 	}
 	
 	// Get user image type configuration
-	imageType, err := domain.GetImageTypeByName(s.config, "user")
-	if err != nil {
+	imageType, found := domain.GetImageTypeByName(s.config, "user")
+	if !found {
 		s.logger.Errorw("Failed to get image type configuration", 
-			"error", err,
 			"userGUID", userGUID)
-		return nil, fmt.Errorf("image type configuration error: %w", err)
+		return nil, fmt.Errorf("image type configuration not found")
 	}
 	
 	// Process image to create variants

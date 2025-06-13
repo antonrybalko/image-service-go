@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -67,17 +66,17 @@ func (r *Router) setupRoutes() {
 	r.router.Get("/health", HealthHandler())
 
 	// API v1 routes
-	r.router.Route("/v1", func(v1 r chi.Router) {
+	r.router.Route("/v1", func(v1 chi.Router) {
 		// Public routes
 		v1.Get("/users/{userGuid}/image", userImageHandlers.GetUserImage())
 
 		// Protected routes - require authentication
-		v1.Group(func(auth r chi.Router) {
+		v1.Group(func(auth chi.Router) {
 			// Apply JWT middleware to all routes in this group
 			auth.Use(r.jwtAuth())
 
 			// Current user routes
-			auth.Route("/me", func(me r chi.Router) {
+			auth.Route("/me", func(me chi.Router) {
 				me.Put("/image", userImageHandlers.UploadUserImage())
 				me.Get("/image", userImageHandlers.GetCurrentUserImage())
 				me.Delete("/image", userImageHandlers.DeleteUserImage())
@@ -106,7 +105,7 @@ func (r *Router) writeError(w http.ResponseWriter, status int, errType, message 
 
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		r.logger.Errorw("Failed to write error response", 
+		r.logger.Errorw("Failed to write error response",
 			"status", status,
 			"error", errType,
 			"message", message,

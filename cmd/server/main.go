@@ -16,8 +16,6 @@ import (
 	"github.com/antonrybalko/image-service-go/internal/repository"
 	"github.com/antonrybalko/image-service-go/internal/service"
 	"github.com/antonrybalko/image-service-go/internal/storage"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
 )
 
@@ -49,15 +47,15 @@ func main() {
 	)
 
 	// Load image configuration from YAML
-	imageConfig, err := config.LoadImageConfig(cfg.ImageConfig.ConfigPath)
+	imageConfig, err := config.LoadImageConfig(cfg.ImageConfigPath)
 	if err != nil {
 		sugar.Fatalw("Failed to load image configuration",
 			"error", err,
-			"path", cfg.ImageConfig.ConfigPath)
+			"path", cfg.ImageConfigPath)
 	}
 	sugar.Infow("Loaded image configuration",
 		"types", len(imageConfig.Types),
-		"path", cfg.ImageConfig.ConfigPath)
+		"path", cfg.ImageConfigPath)
 
 	// Initialize repository
 	// For Phase 1, we'll use a mock repository
