@@ -40,7 +40,7 @@ func TestLoad_DefaultValues(t *testing.T) {
 	assert.Equal(t, "RS256", cfg.JWT.Algorithm)
 
 	// Image config defaults
-	assert.Equal(t, "config/images.yaml", cfg.ImageConfig.ConfigPath)
+	assert.Equal(t, "config/images.yaml", cfg.ImageConfigPath)
 }
 
 func TestLoad_EnvironmentVariables(t *testing.T) {
@@ -106,7 +106,7 @@ func TestLoad_EnvironmentVariables(t *testing.T) {
 	assert.Equal(t, "HS256", cfg.JWT.Algorithm)
 
 	// Image config
-	assert.Equal(t, "test/images.yaml", cfg.ImageConfig.ConfigPath)
+	assert.Equal(t, "test/images.yaml", cfg.ImageConfigPath)
 
 	// Clean up
 	os.Clearenv()
