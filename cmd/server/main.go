@@ -38,7 +38,11 @@ func main() {
 		fmt.Printf("Failed to initialize logger: %v\n", err)
 		os.Exit(1)
 	}
-	defer logger.Sync()
+	defer func() {
+		if err := logger.Sync(); err != nil {
+			fmt.Printf("Failed to sync logger: %v\n", err)
+		}
+	}()
 
 	sugar := logger.Sugar()
 	sugar.Infow("Starting image service",
@@ -47,15 +51,15 @@ func main() {
 	)
 
 	// Load image configuration from YAML
-	imageConfig, err := config.LoadImageConfig(cfg.ImageConfigPath)
+	imageConfig, err := config.LoadImageConfig(cfg.ImageConfig.ConfigPath)
 	if err != nil {
 		sugar.Fatalw("Failed to load image configuration",
 			"error", err,
-			"path", cfg.ImageConfigPath)
+			"path", cfg.ImageConfig.ConfigPath)
 	}
 	sugar.Infow("Loaded image configuration",
 		"types", len(imageConfig.Types),
-		"path", cfg.ImageConfigPath)
+		"path", cfg.ImageConfig.ConfigPath)
 
 	// Initialize repository
 	// For Phase 1, we'll use a mock repository
@@ -67,7 +71,11 @@ func main() {
 			sugar.Fatalw("Failed to initialize database",
 				"error", err)
 		}
-		defer db.Close()
+		defer func() {
+			if err := db.Close(); err != nil {
+				sugar.Errorw("Failed to close database connection", "error", err)
+			}
+		}()
 		imageRepo = repository.NewPostgresImageRepository(db)
 		sugar.Info("Initialized PostgreSQL repository")
 	} else {
@@ -178,7 +186,9 @@ func initializeDatabase(cfg *config.Config) (*sql.DB, error) {
 
 	// Test the connection
 	if err := db.Ping(); err != nil {
-		db.Close()
+		if closeErr := db.Close(); closeErr != nil {
+			return nil, fmt.Errorf("failed to ping database: %w, and failed to close connection: %v", err, closeErr)
+		}
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 

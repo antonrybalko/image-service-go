@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 	"time"
 
@@ -93,57 +92,4 @@ func (r *Router) jwtAuth() func(http.Handler) http.Handler {
 		Algorithm:    r.config.JWT.Algorithm,
 	}
 	return auth.JWTMiddleware(jwtConfig)
-}
-
-// writeError writes a standardized error response
-func (r *Router) writeError(w http.ResponseWriter, status int, errType, message string) {
-	resp := ErrorResponse{
-		Error:   errType,
-		Message: message,
-		Code:    status,
-	}
-
-	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		r.logger.Errorw("Failed to write error response",
-			"status", status,
-			"error", errType,
-			"message", message,
-			"encoding_error", err,
-		)
-	}
-}
-
-// writeJSON writes a JSON response with the given status code
-func (r *Router) writeJSON(w http.ResponseWriter, status int, data interface{}) {
-	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(data); err != nil {
-		r.logger.Errorw("Failed to write JSON response",
-			"status", status,
-			"error", err,
-		)
-	}
-}
-
-// logError logs an error with request details
-func (r *Router) logError(req *http.Request, err error, message string, keysAndValues ...interface{}) {
-	args := []interface{}{
-		"error", err,
-		"path", req.URL.Path,
-		"method", req.Method,
-		"remote_addr", req.RemoteAddr,
-	}
-	args = append(args, keysAndValues...)
-	r.logger.Errorw(message, args...)
-}
-
-// logInfo logs information with request details
-func (r *Router) logInfo(req *http.Request, message string, keysAndValues ...interface{}) {
-	args := []interface{}{
-		"path", req.URL.Path,
-		"method", req.Method,
-		"remote_addr", req.RemoteAddr,
-	}
-	args = append(args, keysAndValues...)
-	r.logger.Infow(message, args...)
 }

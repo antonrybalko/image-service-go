@@ -15,7 +15,11 @@ func TestLoadImageConfig(t *testing.T) {
 	// Create a temporary directory for test files
 	tempDir, err := os.MkdirTemp("", "image-config-test")
 	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		if err := os.RemoveAll(tempDir); err != nil {
+			t.Logf("Failed to remove temp directory: %v", err)
+		}
+	}()
 
 	// Create a valid image config file
 	configPath := filepath.Join(tempDir, "valid-config.yaml")
@@ -90,7 +94,11 @@ func TestLoadImageConfig_InvalidYAML(t *testing.T) {
 	// Create a temporary directory for test files
 	tempDir, err := os.MkdirTemp("", "image-config-test")
 	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		if err := os.RemoveAll(tempDir); err != nil {
+			t.Logf("Failed to remove temp directory: %v", err)
+		}
+	}()
 
 	// Create an invalid YAML file
 	configPath := filepath.Join(tempDir, "invalid-yaml.yaml")
@@ -307,15 +315,23 @@ func TestGetImageTypeByName(t *testing.T) {
 func TestGetDefaultImageConfigPath(t *testing.T) {
 	// Save original environment
 	origEnv := os.Getenv("IMAGE_CONFIG_PATH")
-	defer os.Setenv("IMAGE_CONFIG_PATH", origEnv)
+	defer func() {
+		if err := os.Setenv("IMAGE_CONFIG_PATH", origEnv); err != nil {
+			t.Logf("Failed to restore IMAGE_CONFIG_PATH: %v", err)
+		}
+	}()
 
 	// Test with environment variable set
-	os.Setenv("IMAGE_CONFIG_PATH", "/custom/path/config.yaml")
+	if err := os.Setenv("IMAGE_CONFIG_PATH", "/custom/path/config.yaml"); err != nil {
+		t.Fatalf("Failed to set IMAGE_CONFIG_PATH: %v", err)
+	}
 	path := GetDefaultImageConfigPath()
 	assert.Equal(t, "/custom/path/config.yaml", path)
 
 	// Test with environment variable unset
-	os.Unsetenv("IMAGE_CONFIG_PATH")
+	if err := os.Unsetenv("IMAGE_CONFIG_PATH"); err != nil {
+		t.Fatalf("Failed to unset IMAGE_CONFIG_PATH: %v", err)
+	}
 	path = GetDefaultImageConfigPath()
 	assert.Equal(t, filepath.Join("config", "images.yaml"), path)
 }

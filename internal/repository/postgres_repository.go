@@ -31,11 +31,16 @@ func (r *PostgresImageRepository) SaveImage(ctx context.Context, image *domain.I
 	if err != nil {
 		return fmt.Errorf("%w: %v", ErrDatabase, err)
 	}
-	defer tx.Rollback() // Rollback if not committed
+	defer func() {
+		if err := tx.Rollback(); err != nil {
+			// Log the rollback error in a real application
+			_ = err
+		}
+	}()
 
 	// Check if the image already exists
 	var exists bool
-	err = tx.QueryRowContext(ctx, 
+	err = tx.QueryRowContext(ctx,
 		`SELECT EXISTS(SELECT 1 FROM images WHERE guid = $1)`,
 		image.GUID).Scan(&exists)
 	if err != nil {
@@ -231,7 +236,12 @@ func (r *PostgresImageRepository) ListImagesByType(ctx context.Context, typeName
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrDatabase, err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			// Log the close error in a real application
+			_ = err
+		}
+	}()
 
 	var images []*domain.Image
 

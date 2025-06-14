@@ -49,29 +49,31 @@ func TestLoad_EnvironmentVariables(t *testing.T) {
 
 	// Set environment variables
 	envVars := map[string]string{
-		"ENVIRONMENT":         "production",
-		"PORT":                "9090",
-		"DB_HOST":             "db.example.com",
-		"DB_PORT":             "5433",
-		"DB_USER":             "dbuser",
-		"DB_PASSWORD":         "dbpass",
-		"DB_NAME":             "imagedb",
-		"DB_SSLMODE":          "require",
-		"S3_REGION":           "eu-west-1",
-		"S3_BUCKET":           "my-images",
-		"S3_ACCESS_KEY_ID":    "access123",
+		"ENVIRONMENT":          "production",
+		"PORT":                 "9090",
+		"DB_HOST":              "db.example.com",
+		"DB_PORT":              "5433",
+		"DB_USER":              "dbuser",
+		"DB_PASSWORD":          "dbpass",
+		"DB_NAME":              "imagedb",
+		"DB_SSLMODE":           "require",
+		"S3_REGION":            "eu-west-1",
+		"S3_BUCKET":            "my-images",
+		"S3_ACCESS_KEY_ID":     "access123",
 		"S3_SECRET_ACCESS_KEY": "secret456",
-		"S3_ENDPOINT":         "https://minio.example.com",
-		"S3_CDN_BASE_URL":     "https://cdn.example.com",
-		"S3_USE_PATH_STYLE":   "true",
-		"JWT_PUBLIC_KEY_URL":  "https://auth.example.com/.well-known/jwks.json",
-		"JWT_SECRET":          "supersecret",
-		"JWT_ALGORITHM":       "HS256",
-		"IMAGE_CONFIG_PATH":   "test/images.yaml",
+		"S3_ENDPOINT":          "https://minio.example.com",
+		"S3_CDN_BASE_URL":      "https://cdn.example.com",
+		"S3_USE_PATH_STYLE":    "true",
+		"JWT_PUBLIC_KEY_URL":   "https://auth.example.com/.well-known/jwks.json",
+		"JWT_SECRET":           "supersecret",
+		"JWT_ALGORITHM":        "HS256",
+		"IMAGE_CONFIG_PATH":    "test/images.yaml",
 	}
 
 	for k, v := range envVars {
-		os.Setenv(k, v)
+		if err := os.Setenv(k, v); err != nil {
+			t.Fatalf("Failed to set environment variable %s: %v", k, err)
+		}
 	}
 
 	// Load config with environment variables
@@ -117,7 +119,9 @@ func TestLoad_InvalidValues(t *testing.T) {
 	os.Clearenv()
 
 	// Test with invalid PORT (non-numeric)
-	os.Setenv("PORT", "invalid")
+	if err := os.Setenv("PORT", "invalid"); err != nil {
+		t.Fatalf("Failed to set PORT environment variable: %v", err)
+	}
 	_, err := Load()
 	assert.Error(t, err, "Loading config with invalid PORT should error")
 

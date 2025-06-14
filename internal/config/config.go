@@ -41,8 +41,10 @@ type Config struct {
 		Algorithm    string `mapstructure:"JWT_ALGORITHM"`
 	}
 
-	// Image configuration - flattened to top level
-	ImageConfigPath string `mapstructure:"IMAGE_CONFIG_PATH"`
+	// Image configuration
+	ImageConfig struct {
+		ConfigPath string `mapstructure:"IMAGE_CONFIG_PATH"`
+	}
 }
 
 // Load reads the configuration from environment variables and returns a Config struct
