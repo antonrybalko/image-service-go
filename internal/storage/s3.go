@@ -31,35 +31,35 @@ type S3Config struct {
 type S3Interface interface {
 	// Put uploads an object to S3 and returns the public URL
 	Put(ctx context.Context, key string, body []byte, contentType string) (string, error)
-	
+
 	// Get retrieves an object from S3
 	Get(ctx context.Context, key string) ([]byte, error)
-	
+
 	// Delete removes an object from S3
 	Delete(ctx context.Context, key string) error
-	
+
 	// GenerateUserImageKey generates a consistent key for user images
 	GenerateUserImageKey(userGUID uuid.UUID, imageGUID uuid.UUID, size string) string
-	
+
 	// GenerateOrganizationImageKey generates a consistent key for organization images
 	GenerateOrganizationImageKey(orgGUID uuid.UUID, imageGUID uuid.UUID, size string) string
-	
+
 	// GetURL returns the URL for an object
 	GetURL(key string) string
 }
 
 // S3Client implements S3Interface using AWS SDK
 type S3Client struct {
-	client    *s3.Client
-	bucket    string
-	region    string
+	client     *s3.Client
+	bucket     string
+	region     string
 	cdnBaseURL string
 }
 
 // NewS3Client creates a new S3 client
 func NewS3Client(cfg S3Config) (S3Interface, error) {
 	var opts []func(*config.LoadOptions) error
-	
+
 	// Use custom endpoint if provided (for MinIO, etc.)
 	if cfg.Endpoint != "" {
 		customResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
@@ -71,35 +71,37 @@ func NewS3Client(cfg S3Config) (S3Interface, error) {
 		})
 		opts = append(opts, config.WithEndpointResolverWithOptions(customResolver))
 	}
-	
+
 	// Use credentials if provided
 	if cfg.AccessKeyID != "" && cfg.SecretAccessKey != "" {
 		opts = append(opts, config.WithCredentialsProvider(
 			credentials.NewStaticCredentialsProvider(cfg.AccessKeyID, cfg.SecretAccessKey, ""),
 		))
 	}
-	
+
 	// Load AWS config
 	awsCfg, err := config.LoadDefaultConfig(
 		context.Background(),
-		config.WithRegion(cfg.Region),
-		config.WithDefaultsMode(aws.DefaultsModeStandard),
+		append([]func(*config.LoadOptions) error{
+			config.WithRegion(cfg.Region),
+			config.WithDefaultsMode(aws.DefaultsModeStandard),
+		}, opts...)...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load AWS config: %w", err)
 	}
-	
+
 	// Create S3 client
 	s3Client := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
 		if cfg.UsePathStyle {
 			o.UsePathStyle = true
 		}
 	})
-	
+
 	return &S3Client{
-		client:    s3Client,
-		bucket:    cfg.Bucket,
-		region:    cfg.Region,
+		client:     s3Client,
+		bucket:     cfg.Bucket,
+		region:     cfg.Region,
 		cdnBaseURL: cfg.CDNBaseURL,
 	}, nil
 }
@@ -116,7 +118,7 @@ func (s *S3Client) Put(ctx context.Context, key string, body []byte, contentType
 	if err != nil {
 		return "", fmt.Errorf("failed to upload object to S3: %w", err)
 	}
-	
+
 	return s.GetURL(key), nil
 }
 
@@ -129,8 +131,13 @@ func (s *S3Client) Get(ctx context.Context, key string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get object from S3: %w", err)
 	}
-	defer result.Body.Close()
-	
+	defer func() {
+		if err := result.Body.Close(); err != nil {
+			// Log the error in a real application
+			_ = err
+		}
+	}()
+
 	return io.ReadAll(result.Body)
 }
 
@@ -143,7 +150,7 @@ func (s *S3Client) Delete(ctx context.Context, key string) error {
 	if err != nil {
 		return fmt.Errorf("failed to delete object from S3: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -163,7 +170,7 @@ func (s *S3Client) GetURL(key string) string {
 	if s.cdnBaseURL != "" {
 		return fmt.Sprintf("%s/%s", strings.TrimRight(s.cdnBaseURL, "/"), key)
 	}
-	
+
 	// Otherwise, construct S3 URL
 	return fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", s.bucket, s.region, key)
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/antonrybalko/image-service-go/internal/domain"
 	"github.com/antonrybalko/image-service-go/internal/processor"
@@ -64,55 +64,55 @@ func (s *ImageService) UploadUserImage(ctx context.Context, userGUID uuid.UUID, 
 	if len(imageData) == 0 {
 		return nil, ErrInvalidImage
 	}
-	
+
 	// Check size limit
 	if int64(len(imageData)) > s.maxSize {
 		return nil, ErrImageTooLarge
 	}
-	
+
 	// Detect image format
 	contentType, err := s.processor.DetectImageFormat(imageData)
 	if err != nil {
-		s.logger.Errorw("Failed to detect image format", 
+		s.logger.Errorw("Failed to detect image format",
 			"error", err,
 			"userGUID", userGUID)
 		return nil, fmt.Errorf("%w: %v", ErrUnsupportedType, err)
 	}
-	
+
 	// Only allow JPEG and PNG
 	if contentType != "image/jpeg" && contentType != "image/png" {
 		return nil, fmt.Errorf("%w: %s", ErrUnsupportedType, contentType)
 	}
-	
+
 	// Get image dimensions
 	width, height, err := s.processor.GetImageDimensions(imageData)
 	if err != nil {
-		s.logger.Errorw("Failed to get image dimensions", 
+		s.logger.Errorw("Failed to get image dimensions",
 			"error", err,
 			"userGUID", userGUID)
 		return nil, fmt.Errorf("%w: %v", ErrProcessingFailed, err)
 	}
-	
+
 	// Get user image type configuration
 	imageType, found := domain.GetImageTypeByName(s.config, "user")
 	if !found {
-		s.logger.Errorw("Failed to get image type configuration", 
+		s.logger.Errorw("Failed to get image type configuration",
 			"userGUID", userGUID)
 		return nil, fmt.Errorf("image type configuration not found")
 	}
-	
+
 	// Process image to create variants
 	variants, err := s.processor.ProcessImage(imageData, imageType)
 	if err != nil {
-		s.logger.Errorw("Failed to process image", 
+		s.logger.Errorw("Failed to process image",
 			"error", err,
 			"userGUID", userGUID)
 		return nil, fmt.Errorf("%w: %v", ErrProcessingFailed, err)
 	}
-	
+
 	// Generate a new image GUID
 	imageGUID := uuid.New()
-	
+
 	// Delete any existing image for this user
 	err = s.DeleteUserImage(ctx, userGUID)
 	if err != nil && !errors.Is(err, ErrNotFound) {
@@ -121,19 +121,19 @@ func (s *ImageService) UploadUserImage(ctx context.Context, userGUID uuid.UUID, 
 			"userGUID", userGUID)
 		// Continue with upload even if deletion fails
 	}
-	
+
 	// Create a new image record
 	image := domain.NewImage(userGUID, "user")
 	image.GUID = imageGUID
 	image.OriginalWidth = width
 	image.OriginalHeight = height
 	image.ContentType = contentType
-	
+
 	// Upload each variant to storage
 	for size, variantData := range variants {
 		// Generate S3 key for this variant
 		key := s.storage.GenerateUserImageKey(userGUID, imageGUID, size)
-		
+
 		// Upload to S3
 		url, err := s.storage.Put(ctx, key, variantData, "image/jpeg")
 		if err != nil {
@@ -144,7 +144,7 @@ func (s *ImageService) UploadUserImage(ctx context.Context, userGUID uuid.UUID, 
 				"size", size)
 			return nil, fmt.Errorf("%w: %v", ErrStorageFailed, err)
 		}
-		
+
 		// Set URL in image record
 		switch size {
 		case "small":
@@ -155,7 +155,7 @@ func (s *ImageService) UploadUserImage(ctx context.Context, userGUID uuid.UUID, 
 			image.LargeURL = url
 		}
 	}
-	
+
 	// Save image metadata to repository
 	err = s.repo.SaveImage(ctx, image)
 	if err != nil {
@@ -165,7 +165,7 @@ func (s *ImageService) UploadUserImage(ctx context.Context, userGUID uuid.UUID, 
 			"imageGUID", imageGUID)
 		return nil, fmt.Errorf("failed to save image metadata: %w", err)
 	}
-	
+
 	// Return user image view
 	return image.ToUserImage(), nil
 }
@@ -183,7 +183,7 @@ func (s *ImageService) GetUserImage(ctx context.Context, userGUID uuid.UUID) (*d
 			"userGUID", userGUID)
 		return nil, fmt.Errorf("failed to get user image: %w", err)
 	}
-	
+
 	// Return user image view
 	return image.ToUserImage(), nil
 }
@@ -201,12 +201,12 @@ func (s *ImageService) GetUserImageByID(ctx context.Context, imageGUID uuid.UUID
 			"imageGUID", imageGUID)
 		return nil, fmt.Errorf("failed to get image: %w", err)
 	}
-	
+
 	// Verify it's a user image
 	if image.TypeName != "user" {
 		return nil, fmt.Errorf("%w: not a user image", ErrUnauthorized)
 	}
-	
+
 	// Return user image view
 	return image.ToUserImage(), nil
 }
@@ -224,7 +224,7 @@ func (s *ImageService) DeleteUserImage(ctx context.Context, userGUID uuid.UUID) 
 			"userGUID", userGUID)
 		return fmt.Errorf("failed to get user image for deletion: %w", err)
 	}
-	
+
 	// Delete image variants from storage
 	sizes := []string{"small", "medium", "large"}
 	for _, size := range sizes {
@@ -239,7 +239,7 @@ func (s *ImageService) DeleteUserImage(ctx context.Context, userGUID uuid.UUID) 
 			// Continue with deletion even if one variant fails
 		}
 	}
-	
+
 	// Delete image metadata from repository
 	err = s.repo.DeleteImage(ctx, image.GUID)
 	if err != nil {
@@ -249,7 +249,7 @@ func (s *ImageService) DeleteUserImage(ctx context.Context, userGUID uuid.UUID) 
 			"imageGUID", image.GUID)
 		return fmt.Errorf("failed to delete image metadata: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -263,16 +263,16 @@ func (s *ImageService) ValidateImageAccess(ctx context.Context, userGUID uuid.UU
 		}
 		return fmt.Errorf("failed to get image: %w", err)
 	}
-	
+
 	// Check if the user owns the image
 	if image.OwnerGUID != userGUID {
 		return ErrUnauthorized
 	}
-	
+
 	return nil
 }
 
 // ReadImageFromFile is a helper function to read image data from a file
 func ReadImageFromFile(filePath string) ([]byte, error) {
-	return ioutil.ReadFile(filePath)
+	return os.ReadFile(filePath)
 }

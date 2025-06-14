@@ -163,7 +163,7 @@ func TestGetUserImage_NotFound(t *testing.T) {
 // TestDeleteUserImage tests deleting a user image
 func TestDeleteUserImage(t *testing.T) {
 	// Set up test service and mocks
-	service, mockRepo, mockStorage, _, _ := setupTestService(t)
+	service, mockRepo, _, _, _ := setupTestService(t)
 
 	// Create test data
 	ctx := context.Background()
